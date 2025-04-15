@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:nutria_fmv_player/custom_widgets/windows_app_layout.dart';
+import 'package:nutria_fmv_player/models/option.dart';
+import 'package:nutria_fmv_player/models/video_node.dart';
+import 'package:nutria_fmv_player/providers/nodes_provider.dart';
 import 'package:nutria_fmv_player/providers/theme_provider.dart';
+import 'package:nutria_fmv_player/providers/ui_state_provider.dart';
 import 'package:nutria_fmv_player/providers/video_player_stack_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +18,8 @@ void main() {
     providers: [
       ChangeNotifierProvider(create: (context) => ThemeProvider()),
       ChangeNotifierProvider(create: (context) => VideoPlayerStackProvider()),
+      ChangeNotifierProvider(create: (context) => NodesProvider()),
+      ChangeNotifierProvider(create: (context) => UiStateProvider()),
     ],
     child: const MyApp(),
   ));
@@ -60,8 +67,21 @@ class MyHomePage extends StatelessWidget {
     ThemeProvider themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: themeProvider.currentTheme.backgroundColor,
-      body: Placeholder(),
+      // backgroundColor: themeProvider.currentAppTheme.backgroundColor,
+      backgroundColor: Colors.black,
+      body: WindowsAppLayout(
+          videoNode: VideoNode(options: [
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
+        // Option(option: 'Option second: go right'),
+        Option(text: 'Option third: go down'),
+        Option(text: 'Option second: go right'),
+        // Option(option: 'Option third: go down')
+      ], videoPath: 'videoPath', id: 'a', isBranched: true)),
     );
   }
 }
