@@ -15,28 +15,26 @@ import '../providers/ui_state_provider.dart';
 import 'video_players_manager.dart';
 
 class WindowsAppLayout extends StatelessWidget {
-  const WindowsAppLayout({super.key, required this.videoNode});
-  final VideoNode videoNode;
+  const WindowsAppLayout({super.key});
 
   @override
   Widget build(BuildContext context) {
     final NodesProvider nodesProvider = context.read<NodesProvider>();
     final UiStateProvider uiStateProvider = context.read<UiStateProvider>();
+   
     final VideoPlayerStackProvider videoPlayerStackProvider =
         context.watch<VideoPlayerStackProvider>();
 
-    final controller = videoPlayerStackProvider.controller;
-    final entries = videoPlayerStackProvider
-        .allVisibleEntries; // includes active + preloaded
-    final activePath = videoPlayerStackProvider.currentVideoPath;
-
     return Stack(
       children: [
-        controller == null
+
+        videoPlayerStackProvider.currentEntry == null
             ? const Center(child: CircularProgressIndicator())
             : const VideoPlaybackManager(),
+
         Column(
           children: [
+            
             Expanded(
               child: Center(
                   child: ElevatedButton(
@@ -62,6 +60,7 @@ class WindowsAppLayout extends StatelessWidget {
                 child: Text('Load Project'),
               )),
             ),
+            
             Selector<NodesProvider, VideoNode?>(
               selector: (_, provider) => provider.currentNode,
               builder: (context, currentNode, child) {
@@ -145,6 +144,7 @@ class OptionButton extends StatelessWidget {
           onTapDown: (_) {
             nodesProvider.triggerOption(index);
           },
+          
           child: Padding(
             padding: EdgeInsets.all(10),
             child: ClipRRect(

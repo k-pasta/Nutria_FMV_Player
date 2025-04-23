@@ -69,19 +69,7 @@ class MyHomePage extends StatelessWidget {
     return Scaffold(
       // backgroundColor: themeProvider.currentAppTheme.backgroundColor,
       backgroundColor: Colors.black,
-      body: WindowsAppLayout(
-          videoNode: VideoNode(options: [
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. dolor sit amet, consectetuer adipiscing elit.'),
-        // Option(option: 'Option second: go right'),
-        Option(text: 'Option third: go down'),
-        Option(text: 'Option second: go right'),
-        // Option(option: 'Option third: go down')
-      ], videoPath: 'videoPath', id: 'a', isBranched: true)),
+      body: WindowsAppLayout(),
     );
   }
 }

@@ -1,26 +1,36 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 class VideoPlayerStackProvider extends ChangeNotifier {
   VideoPlayerEntry? _activeEntry;
-  final Map<String, VideoPlayerEntry> _preloadedEntries = {}; // path -> entry
-Map<String, VideoPlayerEntry> get allVisibleEntries {
-    final entries = <String, VideoPlayerEntry>{};
-    if (_activeEntry != null) {
-      entries[_activeEntry!.videoPath] = _activeEntry!;
-    }
-    entries.addAll(_preloadedEntries);
+
+  final List<VideoPlayerEntry> _preloadedEntries = [];
+
+  List<VideoPlayerEntry> get allVisibleEntries {
+    List<VideoPlayerEntry> entries = <VideoPlayerEntry>[];
+    entries = [if (_activeEntry != null) _activeEntry!, ..._preloadedEntries];
     return entries;
   }
 
-  Player? get player => _activeEntry?.player;
-  VideoController? get controller => _activeEntry?.controller;
-  String? get currentVideoPath => _activeEntry?.videoPath;
+  VideoPlayerEntry? get currentEntry => _activeEntry;
 
-  bool get isPlaying => player?.state.playing ?? false;
+  bool get isPlaying => _activeEntry?.player.state.playing ?? false;
+
+  bool _areVideosDirty = false;
+  bool get areVideosDirty => _areVideosDirty;
+  set areVideosDirty(bool value) {
+    if (_areVideosDirty != value) {
+      _areVideosDirty = value;
+      //notifyListeners only if they are dirty.
+      if (value) {
+        notifyListeners();
+      }
+    }
+  }
 
   /// Load the very first video and preload future options
   Future<void> loadInitialVideo({
@@ -37,43 +47,43 @@ Map<String, VideoPlayerEntry> get allVisibleEntries {
 
   /// Transition to one of the preloaded videos
   Future<void> transitionToNextVideo({
-  required String nextPath,
-  required List<String> preloadPaths,
-}) async {
-  final nextEntry = _preloadedEntries[nextPath];
+    required String nextPath,
+    required List<String> preloadPaths,
+  }) async {
+    final nextEntry = _preloadedEntries
+        .firstWhereOrNull((entry) => entry.videoPath == nextPath);
 
-  if (nextEntry != null) {
-    // Step 1: Promote to active immediately
-    final oldEntry = _activeEntry;
-    _activeEntry = nextEntry;
-    _preloadedEntries.remove(nextPath);
-    notifyListeners(); // This triggers a widget update (like switching opacity)
+    if (nextEntry != null) {
+      // Step 1: Promote to active immediately
+      final oldEntry = _activeEntry;
+      _activeEntry = nextEntry;
+      _preloadedEntries.remove(nextEntry);
 
-    // Step 2: Play the new one immediately
-    unawaited(_activeEntry!.player.play());
+      // Step 2: Play the new one immediately
+      unawaited(_activeEntry!.player.play());
 
-    // Step 3: Dispose of old active player in background
-    if (oldEntry != null) {
-      unawaited(oldEntry.player.dispose());
+      // Step 3: Dispose of old active player in background
+      if (oldEntry != null) {
+        unawaited(oldEntry.player.dispose());
+      }
+
+      // Step 4: Clean and preload others in background
+      unawaited(_disposeAllPreloads());
+      unawaited(_preloadVideos(preloadPaths));
+    } else {
+      // Fallback: load from scratch (still with unawaited transitions)
+      await loadInitialVideo(
+        videoPath: nextPath,
+        preloadPaths: preloadPaths,
+      );
     }
-
-    // Step 4: Clean and preload others in background
-    unawaited(_disposeAllPreloads());
-    unawaited(_preloadVideos(preloadPaths));
-  } else {
-    // Fallback: load from scratch (still with unawaited transitions)
-    await loadInitialVideo(
-      videoPath: nextPath,
-      preloadPaths: preloadPaths,
-    );
   }
-}
 
   Future<void> _preloadVideos(List<String> paths) async {
     for (var path in paths) {
-      if (!_preloadedEntries.containsKey(path)) {
+      if (_preloadedEntries.every((entry) => entry.videoPath != path)) {
         final entry = await _createEntry(path, autoPlay: false);
-        _preloadedEntries[path] = entry;
+        _preloadedEntries.add(entry);
       }
     }
   }
@@ -85,8 +95,12 @@ Map<String, VideoPlayerEntry> get allVisibleEntries {
     final player = Player();
     final controller = VideoController(player);
 
-    await player.setVolume(100);
     await player.open(Media(videoPath), play: autoPlay);
+
+    //TODO potential memory leak because i create listeners for every video loaded
+    player.stream.completed.listen((_) {
+      areVideosDirty = true;
+    });
 
     return VideoPlayerEntry(
       player: player,
@@ -95,17 +109,17 @@ Map<String, VideoPlayerEntry> get allVisibleEntries {
     );
   }
 
-  Future<void> _disposeAllPreloads() async {
-    for (final entry in _preloadedEntries.values) {
-      await entry.player.dispose();
-    }
-    _preloadedEntries.clear();
-  }
-
   Future<void> _disposeAll() async {
     await _activeEntry?.player.dispose();
     _activeEntry = null;
     await _disposeAllPreloads();
+  }
+
+  Future<void> _disposeAllPreloads() async {
+    for (final entry in _preloadedEntries) {
+      await entry.player.dispose();
+    }
+    _preloadedEntries.clear();
   }
 
   @override

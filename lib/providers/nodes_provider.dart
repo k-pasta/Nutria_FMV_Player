@@ -22,11 +22,30 @@ class NodesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  VideoNode get firstVideoNode => _nodes.firstWhere((node) => node is VideoNode,
+      orElse: () => throw Exception('No VideoNodes available')) as VideoNode;
+
+  VideoNode? _currentNode;
+  VideoNode? get currentNode => _currentNode;
+  set currentNode(VideoNode? newNode) {
+    if (newNode == null) {
+      _currentNode = null;
+      return;
+    }
+    if (newNode.isBranched) {
+      options = newNode.options;
+    } else if (!newNode.isBranched) {
+      options = []; //empty options list if is not branched
+    }
+    _currentNode = newNode;
+    notifyListeners();
+  }
+
   ProjectInfo _projectInfo = ProjectInfo(title: '', description: '');
   ProjectInfo get projectInfo => _projectInfo;
   set projectInfo(ProjectInfo newProjectinfo) => newProjectinfo;
 
-  ProjectSettings _projectSettings = ProjectSettings(
+  final ProjectSettings _projectSettings = ProjectSettings(
       pauseOnEnd: false,
       showTimer: true,
       selectionTime: 8000,
@@ -100,7 +119,7 @@ class NodesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-List<List<Option>> _currentOptions = [[], []];
+  List<List<Option>> _currentOptions = [[], []];
   List<Option> get currentOptionsTop => _currentOptions[0];
   List<Option> get currentOptionsBottom => _currentOptions[1];
   List<Option> get currentOptions => _currentOptions[0] + _currentOptions[1];
@@ -113,18 +132,16 @@ List<List<Option>> _currentOptions = [[], []];
     notifyListeners();
   }
 
-  VideoNode get firstVideoNode =>
-      _nodes.firstWhere((node) => node is VideoNode, orElse: () => throw Exception('No VideoNodes available')) as VideoNode;
-
   int _lastSelectedIndex = 0;
 
   VideoNode? nextVideoNode(
       {required VideoNode currentVideoNode, int? selectedIndex}) {
+    
     Node? nextNode;
     DefaultSelectionMethod currentNodeSelectionMethod =
         currentVideoNode.overrides?[VideoSettings.defaultSelection] ??
             _projectSettings.defaultSelection ??
-            DefaultSelectionMethod.first;
+            DefaultSelectionMethod.first; //TODO move to static data
 
     if (currentVideoNode.isBranched) {
       if (selectedIndex != null) {
@@ -153,8 +170,8 @@ List<List<Option>> _currentOptions = [[], []];
                     .toInt()
                 : 0;
             nextNode = _nodes.firstWhereOrNull(
-              (n) => n.id ==
-                  currentVideoNode.options[_lastSelectedIndex].target,
+              (n) =>
+                  n.id == currentVideoNode.options[_lastSelectedIndex].target,
             );
             break;
           case DefaultSelectionMethod.lastSelected:
@@ -173,7 +190,7 @@ List<List<Option>> _currentOptions = [[], []];
               (n) => n.id == currentVideoNode.options.first.target,
             );
             break;
-          default:
+          // default:
         }
       }
     } else {
@@ -191,19 +208,30 @@ List<List<Option>> _currentOptions = [[], []];
     }
   }
 
-void triggerOption(int? optionIndex) {
-  currentNode = nextVideoNode(
-    currentVideoNode: currentNode!,
-    selectedIndex: optionIndex,
-  );
-}
+  void triggerOption(int? optionIndex) {
+    currentNode = nextVideoNode(
+      currentVideoNode: currentNode!,
+      selectedIndex: optionIndex,
+    );
+  }
 
-  List<VideoNode> getNextNodes({required VideoNode currentVideoNode}){
+  Node? getNodeById(String id) {
+    return _nodes.firstWhereOrNull((node) => node.id == id);
+  }
+
+  String? getPathById(String id) {
+    return (getNodeById(id) is VideoNode)
+        ? (getNodeById(id) as VideoNode).videoPath
+        : null;
+  }
+
+  List<VideoNode> getNextNodes({required VideoNode currentVideoNode}) {
 //return all options's target nodes
     List<VideoNode> nextNodes = [];
 
     for (var option in currentVideoNode.options) {
-      var nextNode = _nodes.firstWhereOrNull((node) => node.id == option.target);
+      var nextNode =
+          _nodes.firstWhereOrNull((node) => node.id == option.target);
       if (nextNode != null) {
         if (nextNode is VideoNode) {
           nextNodes.add(nextNode);
@@ -214,22 +242,5 @@ void triggerOption(int? optionIndex) {
     }
 
     return nextNodes;
-  }
-
-  VideoNode? _currentNode;
-  VideoNode? get currentNode => _currentNode;
-  set currentNode(VideoNode? newNode) {
-    if (newNode == null) {
-      _currentNode = null;
-      return;
-    }
-    if (newNode.isBranched) {
-      options = newNode.options;
-    }
-    else if (!newNode.isBranched) {
-      options = [];
-    }
-    _currentNode = newNode;
-    notifyListeners();
   }
 }
