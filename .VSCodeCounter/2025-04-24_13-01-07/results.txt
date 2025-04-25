@@ -1,0 +1,47 @@
+Date : 2025-04-24 13:01:07
+Directory : c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib
+Total : 18 files,  957 codes, 56 comments, 150 blanks, all 1163 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Dart     |         18 |        957 |         56 |        150 |      1,163 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                           |         18 |        957 |         56 |        150 |      1,163 |
+| . (Files)                                                                                                   |          1 |         49 |         19 |          8 |         76 |
+| custom_widgets                                                                                              |          4 |        341 |         10 |         43 |        394 |
+| models                                                                                                      |          8 |        224 |          0 |         30 |        254 |
+| providers                                                                                                   |          4 |        333 |         25 |         66 |        424 |
+| utilities                                                                                                   |          1 |         10 |          2 |          3 |         15 |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                    | language | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\custom_widgets\disposable_video_player.dart | Dart     |         45 |          1 |          8 |         54 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\custom_widgets\nutria_text.dart             | Dart     |         54 |          0 |          5 |         59 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\custom_widgets\video_players_manager.dart   | Dart     |         73 |          3 |         14 |         90 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\custom_widgets\windows_app_layout.dart      | Dart     |        169 |          6 |         16 |        191 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\main.dart                                   | Dart     |         49 |         19 |          8 |         76 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\app_theme.dart                       | Dart     |         19 |          0 |          3 |         22 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\enums_data.dart                      | Dart     |         78 |          0 |          6 |         84 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\enums_ui.dart                        | Dart     |          2 |          0 |          1 |          3 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\option.dart                          | Dart     |         11 |          0 |          2 |         13 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\project_info.dart                    | Dart     |         11 |          0 |          2 |         13 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\project_settings.dart                | Dart     |         24 |          0 |          3 |         27 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\supported_overrides.dart             | Dart     |         15 |          0 |          4 |         19 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\models\video_node.dart                      | Dart     |         64 |          0 |          9 |         73 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\providers\nodes_provider.dart               | Dart     |        208 |         15 |         32 |        255 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\providers\theme_provider.dart               | Dart     |          6 |          0 |          3 |          9 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\providers\ui_state_provider.dart            | Dart     |          5 |          0 |          2 |          7 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\providers\video_player_stack_provider.dart  | Dart     |        114 |         10 |         29 |        153 |
+| c:\dev\flutter_projects\Nutria_FMV_Player\nutria_fmv_player\lib\utilities\split_list.dart                   | Dart     |         10 |          2 |          3 |         15 |
+| Total                                                                                                       |          |        957 |         56 |        150 |      1,163 |
++-------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

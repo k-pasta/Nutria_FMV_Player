@@ -19,7 +19,6 @@ class NodesProvider extends ChangeNotifier {
     _nodes.clear();
     _nodes.addAll(newNodes);
     currentNode = firstVideoNode;
-    notifyListeners();
   }
 
   VideoNode get firstVideoNode => _nodes.firstWhere((node) => node is VideoNode,
@@ -33,19 +32,18 @@ class NodesProvider extends ChangeNotifier {
       return;
     }
     if (newNode.isBranched) {
-      options = newNode.options;
+      currentOptions = newNode.options;
     } else if (!newNode.isBranched) {
-      options = []; //empty options list if is not branched
+      currentOptions = []; //empty options list if is not branched
     }
     _currentNode = newNode;
-    notifyListeners();
+    log('current node has this path: ${_currentNode?.videoPath}');
   }
 
   ProjectInfo _projectInfo = ProjectInfo(title: '', description: '');
   ProjectInfo get projectInfo => _projectInfo;
-  set projectInfo(ProjectInfo newProjectinfo) => newProjectinfo;
 
-  final ProjectSettings _projectSettings = ProjectSettings(
+  ProjectSettings _projectSettings = ProjectSettings(
       pauseOnEnd: false,
       showTimer: true,
       selectionTime: 8000,
@@ -53,8 +51,9 @@ class NodesProvider extends ChangeNotifier {
       defaultSelection: DefaultSelectionMethod.first);
 
   ProjectSettings get projectSettings => _projectSettings;
-  set projectSettings(ProjectSettings newSettings) => newSettings;
 
+  //Load project function
+  //TODO try catch
   void parseProjectJson(String jsonString) {
     final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
 
@@ -114,34 +113,43 @@ class NodesProvider extends ChangeNotifier {
       print(''); // Blank line between nodes.
     }
     nodes = parsedNodes;
-    projectInfo = parsedProjectInfo;
-    projectSettings = parsedProjectSettings;
+    _projectInfo = parsedProjectInfo;
+    _projectSettings = parsedProjectSettings;
     notifyListeners();
   }
 
-  List<List<Option>> _currentOptions = [[], []];
+  final List<List<Option>> _currentOptions = [[], []];
   List<Option> get currentOptionsTop => _currentOptions[0];
   List<Option> get currentOptionsBottom => _currentOptions[1];
   List<Option> get currentOptions => _currentOptions[0] + _currentOptions[1];
 
-  set options(List<Option> newOptions) {
+  set currentOptions(List<Option> newOptions) {
     List<Option> optionsTop = splitList(newOptions)[0];
     List<Option> optionsBottom = splitList(newOptions)[1];
     _currentOptions.clear();
     _currentOptions.addAll([optionsTop, optionsBottom]);
-    notifyListeners();
+    // notifyListeners();
   }
 
+//used for the nextVideoNode function, when selection method is lastSelected
   int _lastSelectedIndex = 0;
+
+  T getNodeSetting<T>(VideoNode videoNode, VideoSettings setting) {
+    final value = videoNode.overrides?[setting] ?? _projectSettings.getSetting(setting);
+    if (value is T) {
+      return value;
+    } else {
+      throw Exception("Expected setting of type $T but got ${value.runtimeType}");
+    }
+  }
 
   VideoNode? nextVideoNode(
       {required VideoNode currentVideoNode, int? selectedIndex}) {
-    
     Node? nextNode;
     DefaultSelectionMethod currentNodeSelectionMethod =
-        currentVideoNode.overrides?[VideoSettings.defaultSelection] ??
-            _projectSettings.defaultSelection ??
-            DefaultSelectionMethod.first; //TODO move to static data
+        getNodeSetting<DefaultSelectionMethod>(currentVideoNode, VideoSettings.defaultSelection);
+    // currentVideoNode.overrides?[VideoSettings.defaultSelection] ??
+    //     _projectSettings.defaultSelection; //TODO move to static data
 
     if (currentVideoNode.isBranched) {
       if (selectedIndex != null) {
@@ -154,7 +162,10 @@ class NodesProvider extends ChangeNotifier {
           case DefaultSelectionMethod.first:
             _lastSelectedIndex = 0;
             nextNode = _nodes.firstWhereOrNull(
-              (n) => n.id == currentVideoNode.options.first.target,
+              (n) =>
+                  n.id ==
+                  currentVideoNode
+                      .options.first.target, //todo handle crash if no options
             );
             break;
           case DefaultSelectionMethod.last:
@@ -203,16 +214,53 @@ class NodesProvider extends ChangeNotifier {
     if (nextNode is VideoNode) {
       return nextNode;
     } else {
+      log('no next node available');
       // Placeholder for future behavior when nextNode is not a VideoNode
       return null;
     }
   }
 
+  bool _haveNextReady = false;
+  set haveNextReady(bool haveNextReady) {
+    _haveNextReady = haveNextReady;
+  }
+
+  bool get haveNextReady => _haveNextReady;
+
+  bool shouldDisplayOptions(Duration remainingTime) {
+    final timeFromEnd = _currentNode?.overrides?[VideoSettings.selectionTime] !=
+            null
+        ? Duration(
+            milliseconds: _currentNode!.overrides![VideoSettings.selectionTime])
+        : Duration(milliseconds: projectSettings.selectionTime);
+    if (_currentNode == null) {
+      return false;
+    }
+    return remainingTime <= timeFromEnd;
+  }
+
+  double remainingTimeFactor(Duration remainingTime) {
+    final timeFromEnd = _currentNode?.overrides?[VideoSettings.selectionTime] !=
+            null
+        ? Duration(
+            milliseconds: _currentNode!.overrides![VideoSettings.selectionTime])
+        : Duration(milliseconds: projectSettings.selectionTime);
+    if (_currentNode == null || timeFromEnd.inMilliseconds <= 0) {
+      return 0.0;
+    }
+    final factor = remainingTime.inMilliseconds / timeFromEnd.inMilliseconds;
+    return factor.clamp(0.0, 1.0);
+  }
+
   void triggerOption(int? optionIndex) {
-    currentNode = nextVideoNode(
-      currentVideoNode: currentNode!,
-      selectedIndex: optionIndex,
-    );
+    if (!_haveNextReady) {
+      currentNode = nextVideoNode(
+        currentVideoNode: currentNode!,
+        selectedIndex: optionIndex,
+      );
+    }
+    log('selected $optionIndex and havenextready was $_haveNextReady');
+    _haveNextReady = true;
   }
 
   Node? getNodeById(String id) {
@@ -226,7 +274,7 @@ class NodesProvider extends ChangeNotifier {
   }
 
   List<VideoNode> getNextNodes({required VideoNode currentVideoNode}) {
-//return all options's target nodes
+    //return all options's target nodes
     List<VideoNode> nextNodes = [];
 
     for (var option in currentVideoNode.options) {
@@ -242,5 +290,9 @@ class NodesProvider extends ChangeNotifier {
     }
 
     return nextNodes;
+  }
+
+  void log(String message) {
+    debugPrint("[NodesProvider] $message");
   }
 }

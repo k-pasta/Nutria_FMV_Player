@@ -16,20 +16,28 @@ class VideoPlayerStackProvider extends ChangeNotifier {
     return entries;
   }
 
-  VideoPlayerEntry? get currentEntry => _activeEntry;
+  VideoPlayerEntry? get currentEntry =>
+      allVisibleEntries.firstWhereOrNull((entry) => entry.player.state.playing);
+
+  VideoPlayerEntry? get firstEntry =>
+      allVisibleEntries.isNotEmpty ? allVisibleEntries.first : null;
 
   bool get isPlaying => _activeEntry?.player.state.playing ?? false;
 
-  bool _areVideosDirty = false;
-  bool get areVideosDirty => _areVideosDirty;
-  set areVideosDirty(bool value) {
-    if (_areVideosDirty != value) {
-      _areVideosDirty = value;
-      //notifyListeners only if they are dirty.
-      if (value) {
-        notifyListeners();
-      }
-    }
+  ShouldStackUpdate _shouldStackUpdate = ShouldStackUpdate.no;
+
+  get shouldStackUpdate {
+    return _shouldStackUpdate;
+  }
+
+  void setVideosDirtyFlag(ShouldStackUpdate reason) {
+    _shouldStackUpdate = reason;
+    notifyListeners();
+  }
+
+  void clearVideosDirtyFlag() {
+    _shouldStackUpdate = ShouldStackUpdate.no;
+    notifyListeners();
   }
 
   /// Load the very first video and preload future options
@@ -38,75 +46,70 @@ class VideoPlayerStackProvider extends ChangeNotifier {
     required List<String> preloadPaths,
   }) async {
     await _disposeAll();
-
-    _activeEntry = await _createEntry(videoPath, autoPlay: true);
-    notifyListeners();
-
     await _preloadVideos(preloadPaths);
+    _activeEntry = await _createEntry(videoPath, autoPlay: true);
+
+    setVideosDirtyFlag(ShouldStackUpdate.initial);
+    print('completed loading initial video');
   }
 
   /// Transition to one of the preloaded videos
-  Future<void> transitionToNextVideo({
+  void transitionToNextVideo({
     required String nextPath,
     required List<String> preloadPaths,
-  }) async {
+  }) {
     final nextEntry = _preloadedEntries
         .firstWhereOrNull((entry) => entry.videoPath == nextPath);
 
+//print _preloadedEntries paths and nextPath
+    print(
+        'TR-Preloaded entries paths: ${_preloadedEntries.map((entry) => entry.videoPath).toList()}');
+    print('TR-Next path: $nextPath');
+
     if (nextEntry != null) {
+      print('TR-there is a preloaded entry with that path');
       // Step 1: Promote to active immediately
       final oldEntry = _activeEntry;
       _activeEntry = nextEntry;
       _preloadedEntries.remove(nextEntry);
 
       // Step 2: Play the new one immediately
-      unawaited(_activeEntry!.player.play());
+      _activeEntry!.player.play();
 
       // Step 3: Dispose of old active player in background
       if (oldEntry != null) {
-        unawaited(oldEntry.player.dispose());
+        oldEntry.player.dispose();
       }
 
       // Step 4: Clean and preload others in background
-      unawaited(_disposeAllPreloads());
-      unawaited(_preloadVideos(preloadPaths));
+      _disposeAllPreloads().then((_) => _preloadVideos(preloadPaths));
+
     } else {
-      // Fallback: load from scratch (still with unawaited transitions)
-      await loadInitialVideo(
-        videoPath: nextPath,
-        preloadPaths: preloadPaths,
-      );
+      throw Exception('The requested video path was not preloaded: $nextPath');
     }
   }
 
+  // void callNotify() {
+  //   notifyListeners();
+  // }
+
+  /// Preloads a list of video paths into memory for faster transitions.
+  ///
+  /// This method ensures that videos are preloaded only if they are not
+  /// already in the `_preloadedEntries` list. It creates a `VideoPlayerEntry`
+  /// for each path and adds it to the preloaded entries.
   Future<void> _preloadVideos(List<String> paths) async {
     for (var path in paths) {
+      // Check if the video is already preloaded
       if (_preloadedEntries.every((entry) => entry.videoPath != path)) {
+        // Create a new VideoPlayerEntry for the video path
         final entry = await _createEntry(path, autoPlay: false);
+        // Add the entry to the preloaded entries list
         _preloadedEntries.add(entry);
       }
     }
-  }
-
-  Future<VideoPlayerEntry> _createEntry(
-    String videoPath, {
-    bool autoPlay = false,
-  }) async {
-    final player = Player();
-    final controller = VideoController(player);
-
-    await player.open(Media(videoPath), play: autoPlay);
-
-    //TODO potential memory leak because i create listeners for every video loaded
-    player.stream.completed.listen((_) {
-      areVideosDirty = true;
-    });
-
-    return VideoPlayerEntry(
-      player: player,
-      controller: controller,
-      videoPath: videoPath,
-    );
+    print(
+        'TR-Preloaded videos paths: ${_preloadedEntries.map((entry) => entry.videoPath).toList()}');
   }
 
   Future<void> _disposeAll() async {
@@ -116,7 +119,8 @@ class VideoPlayerStackProvider extends ChangeNotifier {
   }
 
   Future<void> _disposeAllPreloads() async {
-    for (final entry in _preloadedEntries) {
+    final entriesToDispose = List<VideoPlayerEntry>.from(_preloadedEntries);
+    for (final entry in entriesToDispose) {
       await entry.player.dispose();
     }
     _preloadedEntries.clear();
@@ -127,16 +131,75 @@ class VideoPlayerStackProvider extends ChangeNotifier {
     _disposeAll();
     super.dispose();
   }
+
+  /// Internal utility to create and optionally warm-up a video entry.
+  Future<VideoPlayerEntry> _createEntry(
+    String path, {
+    bool autoPlay = false,
+  }) async {
+    final player = Player();
+    final controller = VideoController(player);
+    final subs = <StreamSubscription>[];
+    // Open media
+    await player.open(Media(path), play: autoPlay);
+    await player.setVolume(100);
+
+    // Optional quick warm-up cycle
+    // if (autoWarmUp && !autoPlay) {
+    //   await player.setVolume(0);
+    //   await player.play();
+    //   await Future.delayed(const Duration(milliseconds: 50));
+    //   await player.pause();
+    //   await player.seek(const Duration(milliseconds: 0));
+    //   await player.setVolume(100);
+    // }
+
+    // Listen for playback completion
+    subs.add(player.stream.completed.listen((completed) {
+      if (completed) {
+        setVideosDirtyFlag(ShouldStackUpdate.option);
+        log('Completed playing `$path`');
+      }
+    }));
+
+    return VideoPlayerEntry._(
+      player: player,
+      controller: controller,
+      videoPath: path,
+      subscriptions: subs,
+    );
+  }
+
+  void log(String message) => debugPrint('[VPStack] $message');
 }
 
+/// Internal video entry with disposal logic.
 class VideoPlayerEntry {
-  final Player player;
-  final VideoController controller;
-  final String videoPath;
-
-  VideoPlayerEntry({
+  VideoPlayerEntry._({
     required this.player,
     required this.controller,
     required this.videoPath,
+    required this.subscriptions,
   });
+
+  final Player player;
+  final VideoController controller;
+  final String videoPath;
+  final List<StreamSubscription> subscriptions;
+
+  // Getter for position stream
+  Stream<Duration> get positionStream => player.stream.position;
+  bool get completed => player.state.completed;
+  /// Dispose this entry's resources.
+  Future<void> dispose() async {
+    for (var sub in subscriptions) {
+      await sub.cancel();
+    }
+    await player.dispose();
+    log('Disposed entry `$videoPath`');
+  }
+
+  void log(String message) => debugPrint('[VPStack] $message');
 }
+
+enum ShouldStackUpdate { no, initial, option, end }

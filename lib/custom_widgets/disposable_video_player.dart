@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:nutria_fmv_player/models/enums_data.dart';
 import 'package:nutria_fmv_player/models/video_node.dart';
 import 'package:nutria_fmv_player/providers/nodes_provider.dart';
 import 'package:nutria_fmv_player/providers/video_player_stack_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+
+import '../providers/video_manager_provider.dart';
 
 class DisposableVideoPlayer extends StatefulWidget {
   const DisposableVideoPlayer({
@@ -21,6 +24,7 @@ class DisposableVideoPlayer extends StatefulWidget {
 
 class _DisposableVideoPlayerState extends State<DisposableVideoPlayer> {
   late final VideoController controller;
+  late BoxFit boxFit;
 
   @override
   void initState() {
@@ -40,14 +44,22 @@ class _DisposableVideoPlayerState extends State<DisposableVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: !widget.isActive,
-        child: Opacity(
-          opacity: widget.isActive ? 1.0 : 0.0,
-          child: Video(controller: controller),
-        ),
-      ),
+    return Selector<NodesProvider, VideoNode?>(
+      selector: (_, provider) => provider.currentNode,
+      builder: (context, currentNode, child) {
+        VideoFit videoFit = currentNode != null
+            ? context
+                .read<NodesProvider>()
+                .getNodeSetting(currentNode, VideoSettings.videoFit)
+            : VideoFit.fit;
+        boxFit = videoFit.boxFit;
+
+        return Video(
+          controller: controller,
+          controls: NoVideoControls,
+          fit: boxFit,
+        );
+      },
     );
   }
 }

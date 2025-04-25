@@ -15,6 +15,23 @@ class ProjectSettings {
     required this.defaultSelection,
   });
 
+dynamic getSetting(VideoSettings videoSetting) {
+  switch (videoSetting) {
+    case VideoSettings.pauseOnEnd:
+      return pauseOnEnd;
+    case VideoSettings.showTimer:
+      return showTimer;
+    case VideoSettings.selectionTime:
+      return selectionTime;
+    case VideoSettings.videoFit:
+      return videoFit;
+    case VideoSettings.defaultSelection:
+      return defaultSelection;
+    default:
+      throw ArgumentError('Invalid VideoSettings value');
+  }
+}
+
   factory ProjectSettings.fromJson(Map<String, dynamic> json) {
     return ProjectSettings(
       pauseOnEnd: json['pauseOnEnd'] ?? false,

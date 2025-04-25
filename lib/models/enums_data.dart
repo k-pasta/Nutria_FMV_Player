@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum VideoSettings {
   selectionTime,
   pauseOnEnd,
@@ -57,6 +59,21 @@ VideoFit? videoFitFromString(String value) {
   }
 }
 
+extension VideoFitExtension on VideoFit {
+  BoxFit get boxFit {
+    switch (this) {
+      case VideoFit.fit:       return BoxFit.contain;
+      case VideoFit.fitWidth:  return BoxFit.fitWidth;
+      case VideoFit.fitHeight: return BoxFit.fitHeight;
+      case VideoFit.fill:      return BoxFit.cover;
+      //TODO make these better
+      case VideoFit.fillWidth:  return BoxFit.cover;
+      case VideoFit.fillHeight: return BoxFit.cover;
+      case VideoFit.stretch:   return BoxFit.fill;
+    }
+  }
+}
+
 enum DefaultSelectionMethod {
   first,
   last,
@@ -80,4 +97,12 @@ DefaultSelectionMethod? defaultSelectionFromString(String value) {
     default:
       return null;
   }
+}
+
+enum AppState {
+  noProject,
+  mainMenu,
+  videos,
+  credits,
+  loading,
 }

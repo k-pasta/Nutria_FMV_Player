@@ -6,6 +6,7 @@ import 'package:nutria_fmv_player/models/video_node.dart';
 import 'package:nutria_fmv_player/providers/nodes_provider.dart';
 import 'package:nutria_fmv_player/providers/theme_provider.dart';
 import 'package:nutria_fmv_player/providers/ui_state_provider.dart';
+import 'package:nutria_fmv_player/providers/video_manager_provider.dart';
 import 'package:nutria_fmv_player/providers/video_player_stack_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,7 @@ void main() {
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (context) => ThemeProvider()),
+      // ChangeNotifierProvider(create: (context) => VideoManagerProvider()),
       ChangeNotifierProvider(create: (context) => VideoPlayerStackProvider()),
       ChangeNotifierProvider(create: (context) => NodesProvider()),
       ChangeNotifierProvider(create: (context) => UiStateProvider()),
