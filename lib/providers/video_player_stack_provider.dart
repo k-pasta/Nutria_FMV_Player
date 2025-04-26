@@ -4,9 +4,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:nutria_fmv_player/app_state/app_static_data.dart';
 
 class VideoPlayerStackProvider extends ChangeNotifier {
   VideoPlayerEntry? _activeEntry;
+  VideoPlayerEntry? get activeEntry => _activeEntry; 
 
   final List<VideoPlayerEntry> _preloadedEntries = [];
 
@@ -17,7 +19,7 @@ class VideoPlayerStackProvider extends ChangeNotifier {
   }
 
   VideoPlayerEntry? get currentEntry =>
-      allVisibleEntries.firstWhereOrNull((entry) => entry.player.state.playing);
+      allVisibleEntries.firstWhereOrNull((entry) => entry.player.state.playing); //bad code, why have currentEntry and active entry.
 
   VideoPlayerEntry? get firstEntry =>
       allVisibleEntries.isNotEmpty ? allVisibleEntries.first : null;
@@ -142,7 +144,7 @@ class VideoPlayerStackProvider extends ChangeNotifier {
     final subs = <StreamSubscription>[];
     // Open media
     await player.open(Media(path), play: autoPlay);
-    await player.setVolume(100);
+    await player.setVolume(AppStaticData.volume);
 
     // Optional quick warm-up cycle
     // if (autoWarmUp && !autoPlay) {
@@ -202,4 +204,4 @@ class VideoPlayerEntry {
   void log(String message) => debugPrint('[VPStack] $message');
 }
 
-enum ShouldStackUpdate { no, initial, option, end }
+enum ShouldStackUpdate { no, initial, option, lateOption, end }

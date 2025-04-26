@@ -4,12 +4,14 @@ import 'package:nutria_fmv_player/models/enums_data.dart';
 import 'package:nutria_fmv_player/models/video_node.dart';
 import 'package:nutria_fmv_player/providers/ui_state_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../providers/nodes_provider.dart';
 import '../providers/video_manager_provider.dart';
 import '../providers/video_player_stack_provider.dart';
 import 'disposable_video_player.dart';
 
+///TODO reduce boilerplate code
 class VideoPlaybackManager extends StatefulWidget {
   const VideoPlaybackManager({super.key});
 
@@ -90,16 +92,14 @@ class _VideoPlaybackManagerState extends State<VideoPlaybackManager> {
                   preloadPaths: preloadPaths,
                 );
               } else {
-                
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  uiStateProvider.appState = AppState.mainMenu;
+                });
               }
             }
 
             //if it doesn't exits, that means there is no other video in the list, so we go back to main menu
-          } else {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              uiStateProvider.appState = AppState.mainMenu;
-            });
-          }
+          } else {}
 
           // _updateVideoPlayers(entries, activeEntry);
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -107,6 +107,49 @@ class _VideoPlaybackManagerState extends State<VideoPlaybackManager> {
             nodesProvider.haveNextReady = false;
             // safe here
           });
+        } else if (shouldStackUpdate == ShouldStackUpdate.lateOption) {
+          final currentNode = nodesProvider.currentNode;
+
+          if (currentNode != null) {
+            bool shouldMoveForward = !nodesProvider.getNodeSetting<bool>(
+                currentNode, VideoSettings.pauseOnEnd);
+
+            if (shouldMoveForward) {
+              //trigger selection in case it wasn't triggered
+              //this is also performed when the node is not branching as all it does is fetch the next video
+              nodesProvider.triggerOption(null);
+              //storing currentNode
+              final activeNode = nodesProvider.currentNode;
+
+              //if it exists, that means the player can move on
+              if (activeNode != null) {
+                final preloadPaths = activeNode.options
+                    .where((option) => option.target != null)
+                    .map((option) =>
+                        nodesProvider.getPathById(option.target!) as String)
+                    .toList();
+
+                //transitioning to next video
+                videoProvider.transitionToNextVideo(
+                  nextPath: activeNode.videoPath,
+                  preloadPaths: preloadPaths,
+                );
+              } else {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  uiStateProvider.appState = AppState.mainMenu;
+                });
+              }
+
+              //if it doesn't exits, that means there is no other video in the list, so we go back to main menu
+            } else {}
+
+            // _updateVideoPlayers(entries, activeEntry);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              videoProvider.clearVideosDirtyFlag();
+              nodesProvider.haveNextReady = false;
+              // safe here
+            });
+          }
         } else if (shouldStackUpdate == ShouldStackUpdate.initial) {
           // _updateVideoPlayers(entries, activeEntry);
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -118,15 +161,21 @@ class _VideoPlaybackManagerState extends State<VideoPlaybackManager> {
         activeEntry = videoProvider.currentEntry;
         entries = videoProvider.allVisibleEntries;
 
-        return IndexedStack(
-          index: 0,
-          children: entries.map((entry) {
-            return DisposableVideoPlayer(
-              key: ValueKey(entry.videoPath),
-              entry: entry,
-              isActive: entry == activeEntry,
-            );
-          }).toList(),
+        return GestureDetector(
+          onDoubleTap: () async {
+            bool fs = await windowManager.isFullScreen();
+            await windowManager.setFullScreen(!fs);
+          },
+          child: IndexedStack(
+            index: 0,
+            children: entries.map((entry) {
+              return DisposableVideoPlayer(
+                key: ValueKey(entry.videoPath),
+                entry: entry,
+                isActive: entry == activeEntry,
+              );
+            }).toList(),
+          ),
         );
       },
     );

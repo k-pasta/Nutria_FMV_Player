@@ -15,6 +15,7 @@ class NutriaText extends StatelessWidget {
   final TextAlign textAlign;
   final bool selectable;
   final double sizeMultiplier;
+  final bool invertColor;
   const NutriaText(
       {required this.text,
       this.state = NutriaTextState.normal,
@@ -23,10 +24,20 @@ class NutriaText extends StatelessWidget {
       this.textAlign = TextAlign.left,
       this.selectable = false,
       this.sizeMultiplier = 1.0,
+      this.invertColor = false,
       super.key});
 
   @override
   Widget build(BuildContext context) {
+    Color _invertColor(Color color) {
+      return Color.from(
+        red: 1.0 - color.r,
+        green: 1.0 - color.g,
+        blue: 1.0 - color.b,
+        alpha: color.a, // Preserve the original alpha
+      );
+    }
+
     final AppTheme theme = context.watch<ThemeProvider>().currentAppTheme;
     return Text(
       text,
@@ -34,11 +45,17 @@ class NutriaText extends StatelessWidget {
       softWrap: false,
       style: TextStyle(
         height: 1.0,
-        color: state == NutriaTextState.accented
-            ? theme.cTextActive
-            : state == NutriaTextState.inactive
-                ? theme.cTextInactive
-                : theme.cText,
+        color: invertColor
+            ? (state == NutriaTextState.accented
+                ? _invertColor(theme.cTextActive)
+                : state == NutriaTextState.inactive
+                    ? _invertColor(theme.cTextInactive)
+                    : _invertColor(theme.cText))
+            : (state == NutriaTextState.accented
+                ? theme.cTextActive
+                : state == NutriaTextState.inactive
+                    ? theme.cTextInactive
+                    : theme.cText),
         fontSize: theme.dTextHeight * sizeMultiplier,
         fontFamily: 'SourceSans', // Ensure the correct family is used
         fontVariations: textStyle == NutriaTextStyle.boldItalic

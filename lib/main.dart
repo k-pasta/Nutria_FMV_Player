@@ -9,11 +9,16 @@ import 'package:nutria_fmv_player/providers/ui_state_provider.dart';
 import 'package:nutria_fmv_player/providers/video_manager_provider.dart';
 import 'package:nutria_fmv_player/providers/video_player_stack_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
-void main() {
+import 'custom_widgets/nutria_hotkeys_wrapper.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Necessary initialization for package:media_kit.
   MediaKit.ensureInitialized();
+    // Must add this line.
+  await windowManager.ensureInitialized();
 
   runApp(MultiProvider(
     providers: [
@@ -56,7 +61,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
-      home: const MyHomePage(),
+      home: const NutriaHotkeysWrapper(child: MyHomePage()),
     );
   }
 }

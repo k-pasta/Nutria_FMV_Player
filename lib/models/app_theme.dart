@@ -9,6 +9,10 @@ class AppTheme {
   final double dOptionblurRadius;
   final double dOptionBorderRadius;
 
+  final Color cOptionButton;
+  final Color cOptionButtonHovered;
+  final Color cOptionButtonPressed;
+
   final Color cMenuButtons;
   final double dMenuButtonsBorderRadius;
 
@@ -19,6 +23,9 @@ class AppTheme {
     this.cTextActive = const Color(0xFFFFFFFF),
     this.cTextInactive = const Color(0x65FFFFFF),
     this.cMenuButtons = const Color.fromARGB(64, 70, 59, 66),
+    this.cOptionButton = const Color(0x00000000), // Transparent
+    this.cOptionButtonHovered = const Color(0x99FFFFFF), // 60% white
+    this.cOptionButtonPressed = const Color(0xCCFFFFFF), // 80% white
 this.dMenuButtonsBorderRadius = 5,
     this.dTextHeight = 16,
     this.dOptionblurRadius = 15,
