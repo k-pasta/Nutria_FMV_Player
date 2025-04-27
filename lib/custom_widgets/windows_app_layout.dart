@@ -154,7 +154,10 @@ class LoadProjectButton extends StatelessWidget {
 
     void _loadProject() async {
       // Use the FilePicker provided by the package
-      final result = await FilePicker.platform.pickFiles();
+     final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['fmv'], // Only allow .fmv files
+      );
 
       if (result != null && result.files.single.path != null) {
         uiStateProvider.appState = AppState.loading;
@@ -162,7 +165,7 @@ class LoadProjectButton extends StatelessWidget {
 
         final jsonString = await file.readAsString();
 
-        nodesProvider.parseProjectJson(jsonString);
+        nodesProvider.parseProjectJson(jsonString);//TODO try catch
 
         String? firstPath = nodesProvider.currentNode?.videoPath;
 
