@@ -26,6 +26,24 @@ dependencies:
       url: https://github.com/k-pasta/Nutria_FMV_Maker.git
       path: packages/nutria_fmv_protocol
       ref: main
+  # How screens are drawn, and the fonts they use: shared with the Maker's
+  # designer, so a story looks the same in both.
+  nutria_fmv_screens:
+    git:
+      url: https://github.com/k-pasta/Nutria_FMV_Maker.git
+      path: packages/nutria_fmv_screens
+      ref: main
+
+# The screens package depends on the protocol from the same repository;
+# this makes both use the same copy (pub would otherwise see two sources).
+# A local pubspec_overrides.yaml (see CLAUDE.md) replaces this while working
+# on both repositories.
+dependency_overrides:
+  nutria_fmv_protocol:
+    git:
+      url: https://github.com/k-pasta/Nutria_FMV_Maker.git
+      path: packages/nutria_fmv_protocol
+      ref: main
 
 dev_dependencies:
   flutter_test:

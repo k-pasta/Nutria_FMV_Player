@@ -434,7 +434,16 @@ packages:
     description:
       path: "packages/nutria_fmv_protocol"
       ref: main
-      resolved-ref: "34c4950e4d84e7b34b37edb942e6d5967155dbb7"
+      resolved-ref: "790a3e6481c1c9e0ef9a3c974d8aa6f40b642165"
+      url: "https://github.com/k-pasta/Nutria_FMV_Maker.git"
+    source: git
+    version: "1.0.0"
+  nutria_fmv_screens:
+    dependency: "direct main"
+    description:
+      path: "packages/nutria_fmv_screens"
+      ref: main
+      resolved-ref: "790a3e6481c1c9e0ef9a3c974d8aa6f40b642165"
       url: "https://github.com/k-pasta/Nutria_FMV_Maker.git"
     source: git
     version: "1.0.0"

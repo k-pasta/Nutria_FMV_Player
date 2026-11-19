@@ -225,6 +225,19 @@ void main() {
     expect(state().nodeId, '003');
   });
 
+  test('the saved games screen opens and closes; a save says when', () async {
+    expect(state().savedAt, isNull);
+    await player().start();
+    await player().save();
+    expect(state().savedAt, isNotNull);
+    await player().toMenu();
+    expect(state().hasSave, isTrue, reason: 'kept on the menu');
+    player().openSaves();
+    expect(state().savesOpen, isTrue);
+    player().closeSaves();
+    expect(state().savesOpen, isFalse);
+  });
+
   test('a file that is not a story is reported', () async {
     files.files['bad.fmv'] = 'not json';
     await player().loadStory('bad.fmv');

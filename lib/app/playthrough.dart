@@ -39,7 +39,8 @@ class Playthrough {
     this.waitingAtEnd = false,
     this.paused = false,
     this.settingsOpen = false,
-    this.hasSave = false,
+    this.savesOpen = false,
+    this.savedAt,
   });
 
   final Phase phase;
@@ -69,8 +70,14 @@ class Playthrough {
   /// The settings are open (over the menu or the pause menu).
   final bool settingsOpen;
 
+  /// The saved games are open (to load one).
+  final bool savesOpen;
+
+  /// When the story's saved game was made, or `null` without one.
+  final DateTime? savedAt;
+
   /// The story has a saved game to load.
-  final bool hasSave;
+  bool get hasSave => savedAt != null;
 
   Playthrough copyWith({
     Phase? phase,
@@ -84,7 +91,8 @@ class Playthrough {
     bool? waitingAtEnd,
     bool? paused,
     bool? settingsOpen,
-    bool? hasSave,
+    bool? savesOpen,
+    DateTime? Function()? savedAt,
   }) => Playthrough(
     phase: phase ?? this.phase,
     storyPath: storyPath ?? this.storyPath,
@@ -97,7 +105,8 @@ class Playthrough {
     waitingAtEnd: waitingAtEnd ?? this.waitingAtEnd,
     paused: paused ?? this.paused,
     settingsOpen: settingsOpen ?? this.settingsOpen,
-    hasSave: hasSave ?? this.hasSave,
+    savesOpen: savesOpen ?? this.savesOpen,
+    savedAt: savedAt == null ? this.savedAt : savedAt(),
   );
 }
 
@@ -167,7 +176,7 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     state = Playthrough(
       phase: Phase.menu,
       storyPath: path,
-      hasSave: SaveGame.decode(_files.readSave(path)) != null,
+      savedAt: SaveGame.decode(_files.readSave(path))?.savedAt,
     );
     await _playMenuMusic();
   }
@@ -208,16 +217,17 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     final path = state.storyPath;
     final nodeId = state.nodeId;
     if (path == null || nodeId == null) return;
+    final now = DateTime.now();
     await _files.writeSave(
       path,
       SaveGame(
         nodeId: nodeId,
         values: _variablesAtNode,
         lastPicked: _lastPicked,
-        savedAt: DateTime.now(),
+        savedAt: now,
       ).encode(),
     );
-    state = state.copyWith(hasSave: true);
+    state = state.copyWith(savedAt: () => now);
   }
 
   /// Back to the main menu.
@@ -226,7 +236,7 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     state = Playthrough(
       phase: _story == null ? Phase.noStory : Phase.menu,
       storyPath: state.storyPath,
-      hasSave: state.hasSave,
+      savedAt: state.savedAt,
     );
     await _playMenuMusic();
   }
@@ -262,6 +272,7 @@ class PlaythroughNotifier extends Notifier<Playthrough>
       waitingAtEnd: false,
       paused: false,
       settingsOpen: false,
+      savesOpen: false,
     );
     await _run(MusicChannel.story, _music.enterVideo(node));
     final video = node.video;
@@ -375,7 +386,11 @@ class PlaythroughNotifier extends Notifier<Playthrough>
   /// Closes the pause menu and plays on.
   void resume() {
     if (!state.paused) return;
-    state = state.copyWith(paused: false, settingsOpen: false);
+    state = state.copyWith(
+      paused: false,
+      settingsOpen: false,
+      savesOpen: false,
+    );
     _audio.stop(
       MusicChannel.pauseMenu,
       fadeOutMs: _story?.project.info.pauseMenuMusic?.fadeOutMs ?? 0,
@@ -389,6 +404,11 @@ class PlaythroughNotifier extends Notifier<Playthrough>
   void openSettings() => state = state.copyWith(settingsOpen: true);
 
   void closeSettings() => state = state.copyWith(settingsOpen: false);
+
+  /// Opens the saved games (to load one).
+  void openSaves() => state = state.copyWith(savesOpen: true);
+
+  void closeSaves() => state = state.copyWith(savesOpen: false);
 
   /// Applies the viewer's volume to both engines.
   void applyVolume(PlayerSettings settings) {

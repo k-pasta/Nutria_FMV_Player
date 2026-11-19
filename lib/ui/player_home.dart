@@ -1,6 +1,7 @@
 // What the Player shows: the button to open a story, the story's main menu,
-// or the video with its answers, subtitles and the pause menu; settings
-// and credits over them.
+// or the video with its answers, subtitles and the pause menu; settings,
+// saved games and credits over them. Screens are drawn by the shared
+// nutria_fmv_screens package, as the Maker's designer shows them.
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +11,9 @@ import 'package:nutria_fmv_player/app/settings.dart';
 import 'package:nutria_fmv_player/services/story_files.dart';
 import 'package:nutria_fmv_player/services/video_engine.dart';
 import 'package:nutria_fmv_player/ui/default_screens.dart';
-import 'package:nutria_fmv_player/ui/screen_view.dart';
+import 'package:nutria_fmv_player/ui/screen_parts.dart';
 import 'package:nutria_fmv_protocol/nutria_fmv_protocol.dart';
+import 'package:nutria_fmv_screens/nutria_fmv_screens.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// How a video fills the window.
@@ -30,10 +32,57 @@ final subtitleCuesProvider =
       return text == null ? null : parseSrt(text);
     });
 
+/// Whether the window fills the screen.
+class FullScreenNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  Future<void> toggle() async {
+    final next = !await windowManager.isFullScreen();
+    await windowManager.setFullScreen(next);
+    state = next;
+  }
+}
+
+final fullScreenProvider = NotifierProvider<FullScreenNotifier, bool>(
+  FullScreenNotifier.new,
+);
+
 /// Leaves the app (the window closes).
 Future<void> quitApp() async {
   await windowManager.destroy();
   exit(0);
+}
+
+/// "Saved 19 Nov, 21:14": when a saved game was made.
+String saveLabel(DateTime at) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  String two(int n) => n.toString().padLeft(2, '0');
+  return 'Saved ${at.day} ${months[at.month - 1]}, '
+      '${two(at.hour)}:${two(at.minute)}';
+}
+
+/// [screen] with the Player's additions: its background, and its font
+/// files once loaded.
+class _Screen extends ConsumerWidget {
+  const _Screen({required this.screen, required this.content});
+
+  final FmvMenuScreen screen;
+  final ScreenContent content;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fonts = loadedFonts(ref, screen);
+    return ScreenView(
+      screen: screen,
+      content: content,
+      background: backgroundOf(screen),
+      fontFamilyOf: (path) => fonts[path],
+    );
+  }
 }
 
 /// The whole Player window.
@@ -46,6 +95,7 @@ class PlayerHome extends ConsumerWidget {
     final settingsOpen = ref.watch(
       playthroughProvider.select((p) => p.settingsOpen),
     );
+    final savesOpen = ref.watch(playthroughProvider.select((p) => p.savesOpen));
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -57,7 +107,8 @@ class PlayerHome extends ConsumerWidget {
               Phase.playing => const _Playing(),
             },
           ),
-          if (settingsOpen) const Positioned.fill(child: _SettingsPanel()),
+          if (savesOpen) const Positioned.fill(child: _SavesScreen()),
+          if (settingsOpen) const Positioned.fill(child: _SettingsScreen()),
         ],
       ),
     );
@@ -97,6 +148,17 @@ class _NoStory extends ConsumerWidget {
   }
 }
 
+/// What Load does: the saved games screen when the story designed one,
+/// else loading the saved game straight away.
+void _load(PlaythroughNotifier notifier) {
+  final project = notifier.story?.project;
+  if (project != null && !project.savesScreen.isEmpty) {
+    notifier.openSaves();
+  } else {
+    notifier.loadSave();
+  }
+}
+
 /// The story's main menu, designed or the default one.
 class _Menu extends ConsumerWidget {
   const _Menu();
@@ -106,21 +168,15 @@ class _Menu extends ConsumerWidget {
     final notifier = ref.read(playthroughProvider.notifier);
     final hasSave = ref.watch(playthroughProvider.select((p) => p.hasSave));
     final project = notifier.story!.project;
-    final design = project.menuScreen;
-    return ScreenView(
-      screen: design.elements.isEmpty
-          ? FmvMenuScreen(
-              background: design.background,
-              elements: kDefaultMenuScreen.elements,
-            )
-          : design,
+    return _Screen(
+      screen: designedOr(project.menuScreen, kDefaultMenuScreen),
       content: ScreenContent(
         title: project.info.title,
         description: project.info.description,
         disabled: {if (!hasSave) 'load'},
         onButton: (kind) => switch (kind) {
           'start' => notifier.start(),
-          'load' => notifier.loadSave(),
+          'load' => _load(notifier),
           'settings' => notifier.openSettings(),
           'credits' => _showCredits(context, project.info),
           'quit' => quitApp(),
@@ -173,7 +229,7 @@ class _Playing extends ConsumerWidget {
           child: GestureDetector(
             // A click goes on after a video that waits at its end.
             onTap: notifier.continueAtEnd,
-            onDoubleTap: _toggleFullScreen,
+            onDoubleTap: ref.read(fullScreenProvider.notifier).toggle,
             child: ref
                 .read(videoEngineProvider)
                 .view(boxFitOf(settings.videoFit)),
@@ -196,10 +252,8 @@ class _Playing extends ConsumerWidget {
   }
 }
 
-Future<void> _toggleFullScreen() async =>
-    windowManager.setFullScreen(!await windowManager.isFullScreen());
-
-/// The answers over the video, once it's time to choose.
+/// The answers over the video, once it's time to choose, on the node's
+/// answer screen.
 class _Choices extends ConsumerWidget {
   const _Choices();
 
@@ -215,10 +269,12 @@ class _Choices extends ConsumerWidget {
     final timeLeft = settings.showTimer && !p.waitingAtEnd && p.picked == null
         ? (remaining.inMilliseconds / settings.selectionTimeMs).clamp(0.0, 1.0)
         : null;
-    final design = story.project.choiceScreen;
-    return ScreenView(
-      screen: design.elements.isEmpty ? kDefaultChoiceScreen : design,
-      showBackground: false,
+    final design = story.project.choiceScreenOf(node);
+    return _Screen(
+      // Over the video: the screen's own background isn't drawn.
+      screen: FmvMenuScreen(
+        elements: designedOr(design, kDefaultChoiceScreen).elements,
+      ),
       content: ScreenContent(
         question: node.question,
         answers: [for (final c in node.choices!) c.text],
@@ -286,11 +342,10 @@ class _PauseMenu extends ConsumerWidget {
     final notifier = ref.read(playthroughProvider.notifier);
     final hasSave = ref.watch(playthroughProvider.select((p) => p.hasSave));
     final project = notifier.story!.project;
-    final design = project.pauseScreen;
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.55),
-      child: ScreenView(
-        screen: design.elements.isEmpty ? kDefaultPauseScreen : design,
+      child: _Screen(
+        screen: designedOr(project.pauseScreen, kDefaultPauseScreen),
         content: ScreenContent(
           title: project.info.title,
           description: project.info.description,
@@ -298,7 +353,7 @@ class _PauseMenu extends ConsumerWidget {
           onButton: (kind) => switch (kind) {
             'resume' => notifier.resume(),
             'save' => notifier.save(),
-            'load' => notifier.loadSave(),
+            'load' => _load(notifier),
             'settings' => notifier.openSettings(),
             'mainMenu' => notifier.toMenu(),
             'quit' => quitApp(),
@@ -310,59 +365,84 @@ class _PauseMenu extends ConsumerWidget {
   }
 }
 
-/// Volume and subtitles.
-class _SettingsPanel extends ConsumerWidget {
-  const _SettingsPanel();
+/// Volume, subtitles and full screen, on the story's settings screen (or
+/// the default one).
+class _SettingsScreen extends ConsumerWidget {
+  const _SettingsScreen();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final story = ref.read(playthroughProvider.notifier).story;
-    final languages = story?.project.info.languages ?? const <String>[];
-    const label = TextStyle(color: Colors.white, fontSize: 16);
-    Widget option(String text, String? value) => ChoiceChip(
-      label: Text(text),
-      selected: settings.subtitles == value,
-      onSelected: (_) => notifier.setSubtitles(value),
-    );
+    final playthrough = ref.read(playthroughProvider.notifier);
+    final project = playthrough.story?.project;
+    final languages = project?.info.languages ?? const <String>[];
+    // The choices, in order: off, then the story's languages (or just "on"
+    // without any).
+    final options = <(String?, String)>[
+      (kSubtitlesOff, 'Off'),
+      if (languages.length < 2)
+        (null, 'On')
+      else
+        for (final (i, code) in languages.indexed)
+          (i == 0 ? null : code, fmvLanguageLabel(code)),
+    ];
+    final current = options.indexWhere((o) => o.$1 == settings.subtitles);
     return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.8),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Volume', style: label),
-              Slider(
-                value: settings.volume,
-                max: 100,
-                onChanged: notifier.setVolume,
-              ),
-              const SizedBox(height: 16),
-              const Text('Subtitles', style: label),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  option('Off', kSubtitlesOff),
-                  if (languages.length < 2)
-                    option('On', null)
-                  else
-                    for (final (i, code) in languages.indexed)
-                      option(fmvLanguageLabel(code), i == 0 ? null : code),
-                ],
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: ref.read(playthroughProvider.notifier).closeSettings,
-                child: const Text('Back'),
-              ),
-            ],
-          ),
+      // A screen of its own: what's behind doesn't show through.
+      color: Colors.black,
+      child: _Screen(
+        screen: designedOr(
+          project?.settingsScreen ?? const FmvMenuScreen(),
+          kDefaultSettingsScreen,
+        ),
+        content: ScreenContent(
+          title: project?.info.title,
+          volume: settings.volume,
+          onVolume: notifier.setVolume,
+          subtitles: options[current < 0 ? 0 : current].$2,
+          onSubtitles: (direction) {
+            final next = (current + direction) % options.length;
+            notifier.setSubtitles(options[next].$1);
+          },
+          fullScreen: ref.watch(fullScreenProvider),
+          onFullScreen: ref.read(fullScreenProvider.notifier).toggle,
+          onButton: (kind) {
+            if (kind == 'back') playthrough.closeSettings();
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// The saved games, to load one.
+class _SavesScreen extends ConsumerWidget {
+  const _SavesScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(playthroughProvider.notifier);
+    final savedAt = ref.watch(playthroughProvider.select((p) => p.savedAt));
+    final project = notifier.story?.project;
+    return ColoredBox(
+      // A screen of its own: what's behind doesn't show through.
+      color: Colors.black,
+      child: _Screen(
+        screen: designedOr(
+          project?.savesScreen ?? const FmvMenuScreen(),
+          kDefaultSavesScreen,
+        ),
+        content: ScreenContent(
+          title: project?.info.title,
+          saves: [if (savedAt != null) saveLabel(savedAt)],
+          onSaveSlot: (_) {
+            notifier.closeSaves();
+            notifier.loadSave();
+          },
+          onButton: (kind) {
+            if (kind == 'back') notifier.closeSaves();
+          },
         ),
       ),
     );

@@ -8,6 +8,7 @@ import 'package:nutria_fmv_player/app/playthrough.dart';
 import 'package:nutria_fmv_player/app/settings.dart';
 import 'package:nutria_fmv_player/services/story_files.dart';
 import 'package:nutria_fmv_player/ui/player_home.dart';
+import 'package:nutria_fmv_screens/nutria_fmv_screens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -15,6 +16,8 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await windowManager.ensureInitialized();
+  // The licences of the fonts screens can use.
+  registerScreenFontLicences();
   final preferences = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: [
@@ -64,13 +67,15 @@ class PlayerKeys extends ConsumerWidget {
     final settings = ref.read(settingsProvider.notifier);
     void volume(double by) =>
         settings.setVolume(ref.read(settingsProvider).volume + by);
-    Future<void> fullScreen() async =>
-        windowManager.setFullScreen(!await windowManager.isFullScreen());
+    final fullScreen = ref.read(fullScreenProvider.notifier).toggle;
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (ref.read(playthroughProvider).settingsOpen) {
+          final p = ref.read(playthroughProvider);
+          if (p.settingsOpen) {
             playthrough.closeSettings();
+          } else if (p.savesOpen) {
+            playthrough.closeSaves();
           } else {
             playthrough.togglePause();
           }
