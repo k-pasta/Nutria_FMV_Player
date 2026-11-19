@@ -1,20 +1,24 @@
-// Music: two channels (the story's music, and the music while choosing or
-// in the menu), each fading out when stopped.
+// Music: three channels (the story's music, the music while choosing, and
+// the pause menu's), each fading out when stopped.
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
-/// The two music channels.
+/// The music channels.
 enum MusicChannel {
   /// Music with the videos (and the main menu's).
   story,
 
   /// Music while the viewer chooses.
   pause,
+
+  /// Music in the pause menu. [AudioEngine.pauseAll] leaves it alone: it
+  /// plays while the rest is paused.
+  pauseMenu,
 }
 
-/// Plays music on two channels.
+/// Plays music on [MusicChannel]s.
 abstract interface class AudioEngine {
   /// Plays [path] on [channel] from the start, replacing what played there.
   /// [onFinished] is called when a track that doesn't loop ends.
@@ -28,6 +32,7 @@ abstract interface class AudioEngine {
   /// Fades [channel] out over [fadeOutMs] and stops it.
   Future<void> stop(MusicChannel channel, {int fadeOutMs = 0});
 
+  /// Pauses and resumes every channel but [MusicChannel.pauseMenu].
   void pauseAll();
   void resumeAll();
 
@@ -86,15 +91,15 @@ class MediaKitAudioEngine implements AudioEngine {
 
   @override
   void pauseAll() {
-    for (final p in _players.values) {
-      p.pause();
+    for (final MapEntry(key: channel, value: p) in _players.entries) {
+      if (channel != MusicChannel.pauseMenu) p.pause();
     }
   }
 
   @override
   void resumeAll() {
-    for (final p in _players.values) {
-      p.play();
+    for (final MapEntry(key: channel, value: p) in _players.entries) {
+      if (channel != MusicChannel.pauseMenu) p.play();
     }
   }
 

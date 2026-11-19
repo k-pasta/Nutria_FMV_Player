@@ -434,7 +434,7 @@ packages:
     description:
       path: "packages/nutria_fmv_protocol"
       ref: main
-      resolved-ref: b9a43caf593558153d599c073ea27fb137b0b42c
+      resolved-ref: "34c4950e4d84e7b34b37edb942e6d5967155dbb7"
       url: "https://github.com/k-pasta/Nutria_FMV_Maker.git"
     source: git
     version: "1.0.0"

@@ -101,6 +101,7 @@ const _story = FmvProject(
   info: FmvProjectInfo(
     title: 'Story',
     menuMusic: FmvLoopMusic(track: 'menu.mp3'),
+    pauseMenuMusic: FmvLoopMusic(track: 'paused.mp3'),
   ),
   settings: FmvSettings(selectionTimeMs: 4000),
   variables: {'coins': FmvVariable(type: FmvVariableType.integer, initial: 0)},
@@ -201,8 +202,10 @@ void main() {
     player().pause();
     expect(state().paused, isTrue);
     expect(video.paused, isTrue);
+    expect(audio.log.last, 'pauseMenu play paused.mp3');
     player().resume();
     expect(video.paused, isFalse);
+    expect(audio.log.last, 'pauseMenu stop');
 
     video.finish();
     await pumpEventQueue();

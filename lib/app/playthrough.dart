@@ -236,8 +236,9 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     final stops = _music.stopAll();
     await _run(MusicChannel.story, stops.story);
     await _run(MusicChannel.pause, stops.pause);
-    // The menu's music, if it was playing.
+    // The menus' music, if it was playing.
     await _audio.stop(MusicChannel.story);
+    await _audio.stop(MusicChannel.pauseMenu);
   }
 
   // -------------------------------------------------------------- playing
@@ -359,11 +360,15 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     _enter(next);
   }
 
-  /// Opens the pause menu (stopping the video and music).
+  /// Opens the pause menu: the video and its music pause, and the pause
+  /// menu's own music (if the story has one) plays.
   void pause() {
     if (state.phase != Phase.playing || state.paused) return;
     _video.pause();
     _audio.pauseAll();
+    if (_story?.project.info.pauseMenuMusic case final music?) {
+      _audio.play(MusicChannel.pauseMenu, music.track, loop: true);
+    }
     state = state.copyWith(paused: true);
   }
 
@@ -371,6 +376,10 @@ class PlaythroughNotifier extends Notifier<Playthrough>
   void resume() {
     if (!state.paused) return;
     state = state.copyWith(paused: false, settingsOpen: false);
+    _audio.stop(
+      MusicChannel.pauseMenu,
+      fadeOutMs: _story?.project.info.pauseMenuMusic?.fadeOutMs ?? 0,
+    );
     _video.resume();
     _audio.resumeAll();
   }
