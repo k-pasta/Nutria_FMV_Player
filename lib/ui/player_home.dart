@@ -270,17 +270,27 @@ class _Choices extends ConsumerWidget {
         ? (remaining.inMilliseconds / settings.selectionTimeMs).clamp(0.0, 1.0)
         : null;
     final design = story.project.choiceScreenOf(node);
-    return _Screen(
-      // Over the video: the screen's own background isn't drawn.
-      screen: FmvMenuScreen(
-        elements: designedOr(design, kDefaultChoiceScreen).elements,
-      ),
-      content: ScreenContent(
-        question: node.question,
-        answers: [for (final c in node.choices!) c.text],
-        picked: p.picked,
-        timeLeft: timeLeft,
-        onAnswer: notifier.pick,
+    // The answers fade in (once per video), so they don't break the tempo
+    // of the film.
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(p.nodeId),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOut,
+      builder: (context, opacity, child) =>
+          Opacity(opacity: opacity, child: child),
+      child: _Screen(
+        // Over the video: the screen's own background isn't drawn.
+        screen: FmvMenuScreen(
+          elements: designedOr(design, kDefaultChoiceScreen).elements,
+        ),
+        content: ScreenContent(
+          question: node.question,
+          answers: [for (final c in node.choices!) c.text],
+          picked: p.picked,
+          timeLeft: timeLeft,
+          onAnswer: notifier.pick,
+        ),
       ),
     );
   }
