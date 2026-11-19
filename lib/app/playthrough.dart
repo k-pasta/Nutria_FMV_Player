@@ -41,6 +41,7 @@ class Playthrough {
     this.settingsOpen = false,
     this.savesOpen = false,
     this.savedAt,
+    this.leaving = false,
   });
 
   final Phase phase;
@@ -70,6 +71,10 @@ class Playthrough {
   /// The settings are open (over the menu or the pause menu).
   final bool settingsOpen;
 
+  /// An answer was picked while the video waited: the answers fade out
+  /// before the next video.
+  final bool leaving;
+
   /// The saved games are open (to load one).
   final bool savesOpen;
 
@@ -93,6 +98,7 @@ class Playthrough {
     bool? settingsOpen,
     bool? savesOpen,
     DateTime? Function()? savedAt,
+    bool? leaving,
   }) => Playthrough(
     phase: phase ?? this.phase,
     storyPath: storyPath ?? this.storyPath,
@@ -107,6 +113,7 @@ class Playthrough {
     settingsOpen: settingsOpen ?? this.settingsOpen,
     savesOpen: savesOpen ?? this.savesOpen,
     savedAt: savedAt == null ? this.savedAt : savedAt(),
+    leaving: leaving ?? this.leaving,
   );
 }
 
@@ -273,6 +280,7 @@ class PlaythroughNotifier extends Notifier<Playthrough>
       paused: false,
       settingsOpen: false,
       savesOpen: false,
+      leaving: false,
     );
     await _run(MusicChannel.story, _music.enterVideo(node));
     final video = node.video;
@@ -296,9 +304,20 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     if (node.isBranched &&
         !state.choicesShown &&
         duration > Duration.zero &&
-        remaining.inMilliseconds <= _story!.settingsOf(node).selectionTimeMs) {
+        remaining.inMilliseconds <= _showAnswersBefore(node)) {
       _showChoices(node);
     }
+  }
+
+  /// How long before the end of [node]'s video its answers appear: the
+  /// choosing time, or, for a video that waits with none, the answer
+  /// screen's fade-in (so it's in when the video stops).
+  int _showAnswersBefore(FmvNode node) {
+    final settings = _story!.settingsOf(node);
+    if (settings.pauseOnEnd && settings.selectionTimeMs == 0) {
+      return _story!.project.choiceScreenOf(node).fadeInMs;
+    }
+    return settings.selectionTimeMs;
   }
 
   void _showChoices(FmvNode node) {
@@ -322,7 +341,18 @@ class PlaythroughNotifier extends Notifier<Playthrough>
     _lastPicked = index;
     state = state.copyWith(picked: () => index);
     _run(MusicChannel.pause, _music.choiceMade());
-    if (state.waitingAtEnd) _advance();
+    if (state.waitingAtEnd) {
+      // The answer screen fades out first.
+      final fade = _story!.project.choiceScreenOf(node).fadeOutMs;
+      if (fade <= 0) {
+        _advance();
+        return;
+      }
+      state = state.copyWith(leaving: true);
+      Future<void>.delayed(Duration(milliseconds: fade), () {
+        if (currentNode == node && state.leaving) _advance();
+      });
+    }
   }
 
   /// Goes on after a video that waits at its end (no answers).

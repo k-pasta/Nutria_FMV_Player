@@ -238,6 +238,39 @@ void main() {
     expect(state().savesOpen, isFalse);
   });
 
+  test('waiting with no time to choose: answers come in before the end, '
+      'and fade out before the next video', () async {
+    final waiting = FmvProject(
+      settings: const FmvSettings(selectionTimeMs: 0, pauseOnEnd: true),
+      choiceScreen: const FmvMenuScreen(
+        fadeInMs: 1000,
+        fadeOutMs: 200,
+        elements: [FmvScreenElement(kind: 'choices', x: 0.5, y: 0.5, width: 1)],
+      ),
+      nodes: {
+        '001': _story.nodes['003']!,
+        '004': _story.nodes['004']!,
+      },
+    );
+    files.files['wait.fmv'] = waiting.encode();
+    await player().loadStory('wait.fmv');
+    await player().start();
+    video.at(_s * 8, _s * 10);
+    expect(state().choicesShown, isFalse);
+    video.at(_s * 9 + const Duration(milliseconds: 100), _s * 10);
+    expect(state().choicesShown, isTrue, reason: 'its fade-in before the end');
+
+    video.finish();
+    await pumpEventQueue();
+    expect(state().waitingAtEnd, isTrue);
+    player().pick(0);
+    expect(state().leaving, isTrue);
+    expect(video.played.last, 'b.mp4', reason: 'still fading out');
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await pumpEventQueue();
+    expect(video.played.last, 'c.mp4');
+  });
+
   test('a file that is not a story is reported', () async {
     files.files['bad.fmv'] = 'not json';
     await player().loadStory('bad.fmv');

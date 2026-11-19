@@ -68,10 +68,17 @@ String saveLabel(DateTime at) {
 /// [screen] with the Player's additions: its background, and its font
 /// files once loaded.
 class _Screen extends ConsumerWidget {
-  const _Screen({required this.screen, required this.content});
+  const _Screen({
+    required this.screen,
+    required this.content,
+    this.visibility = 1,
+  });
 
   final FmvMenuScreen screen;
   final ScreenContent content;
+
+  /// How far the screen has come in (see [ScreenView.visibility]).
+  final double visibility;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,6 +88,7 @@ class _Screen extends ConsumerWidget {
       content: content,
       background: backgroundOf(screen),
       fontFamilyOf: (path) => fonts[path],
+      visibility: visibility,
     );
   }
 }
@@ -269,21 +277,23 @@ class _Choices extends ConsumerWidget {
     final timeLeft = settings.showTimer && !p.waitingAtEnd && p.picked == null
         ? (remaining.inMilliseconds / settings.selectionTimeMs).clamp(0.0, 1.0)
         : null;
-    final design = story.project.choiceScreenOf(node);
-    // The answers fade in (once per video), so they don't break the tempo
-    // of the film.
+    final design = designedOr(
+      story.project.choiceScreenOf(node),
+      kDefaultChoiceScreen,
+    );
+    // The screen comes in over its fade-in (once per video), and fades out
+    // after a pick while the video waits; its own background goes over the
+    // video.
     return TweenAnimationBuilder<double>(
       key: ValueKey(p.nodeId),
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 450),
+      tween: Tween(begin: 0, end: p.leaving ? 0 : 1),
+      duration: Duration(
+        milliseconds: p.leaving ? design.fadeOutMs : design.fadeInMs,
+      ),
       curve: Curves.easeOut,
-      builder: (context, opacity, child) =>
-          Opacity(opacity: opacity, child: child),
-      child: _Screen(
-        // Over the video: the screen's own background isn't drawn.
-        screen: FmvMenuScreen(
-          elements: designedOr(design, kDefaultChoiceScreen).elements,
-        ),
+      builder: (context, visibility, _) => _Screen(
+        screen: design,
+        visibility: visibility,
         content: ScreenContent(
           question: node.question,
           answers: [for (final c in node.choices!) c.text],
