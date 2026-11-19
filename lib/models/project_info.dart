@@ -6,8 +6,8 @@ class ProjectInfo {
 
   factory ProjectInfo.fromJson(Map<String, dynamic> json) {
     return ProjectInfo(
-      title: json['title'],
-      description: json['description'],
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
     );
   }
 }

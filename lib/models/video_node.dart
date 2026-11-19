@@ -47,7 +47,8 @@ class VideoNode extends Node {
         final setting = videoSettingFromString(key);
         if (setting == VideoSettings.videoFit) {
           if (setting != null) {
-            overrides![setting] = videoFitFromString(value);
+            // print("$key, $value");
+            // overrides![setting] = videoFitFromString(value);
           }
         } else if (setting == VideoSettings.defaultSelection) {
           if (setting != null) {
