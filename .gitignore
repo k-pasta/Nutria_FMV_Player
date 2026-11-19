@@ -41,3 +41,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local path to the shared protocol package (see pubspec.yaml)
+pubspec_overrides.yaml
+# Line counter output
+.VSCodeCounter/
